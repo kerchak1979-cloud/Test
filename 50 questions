@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тренажёр: Темы 1–2. Кодирование товаров и ТН ВЭД</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    background: linear-gradient(135deg, #eef2f7 0%, #d9e2ec 100%);
+    margin: 0; padding: 20px;
+    color: #1f2d3d; line-height: 1.6;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  header {
+    background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+    color: #fff; padding: 24px 28px;
+    border-radius: 16px 16px 0 0;
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.4em; }
+  header p { margin: 0; opacity: 0.9; font-size: 0.9em; }
+
+  .main {
+    background: #fff; border-radius: 0 0 16px 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    padding: 24px 28px 32px;
+  }
+
+  .progress-bar {
+    height: 8px; background: #e9ecef; border-radius: 4px;
+    margin-bottom: 18px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: #27ae60; width: 0%;
+    transition: width 0.3s ease;
+  }
+  .stats {
+    display: flex; justify-content: space-between;
+    font-size: 0.9em; color: #5d6d7e; margin-bottom: 20px;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .stats b { color: #1a5276; }
+
+  .question-card {
+    border: 2px solid #dfe6e9; border-radius: 12px;
+    padding: 18px 22px; margin-bottom: 16px;
+    background: #fff; transition: 0.3s;
+  }
+  .question-card.correct { border-color: #27ae60; background: #eafaf1; }
+  .question-card.wrong { border-color: #c0392b; background: #fdedec; }
+
+  .q-num {
+    display: inline-block; background: #2980b9; color: #fff;
+    padding: 2px 10px; border-radius: 12px;
+    font-size: 0.8em; font-weight: 700; margin-bottom: 8px;
+  }
+  .q-text { font-weight: 600; margin-bottom: 12px; font-size: 0.98em; }
+
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .option {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 14px; border: 2px solid #e9ecef;
+    border-radius: 8px; cursor: pointer;
+    transition: 0.2s; font-size: 0.93em; background: #fff;
+  }
+  .option:hover { border-color: #2980b9; background: #f4f9fd; }
+  .option input { margin-top: 4px; transform: scale(1.2); accent-color: #2980b9; flex-shrink: 0; }
+  .option.correct-answer { border-color: #27ae60; background: #eafaf1; }
+  .option.wrong-answer { border-color: #c0392b; background: #fdedec; }
+  .option.disabled { pointer-events: none; opacity: 0.9; }
+
+  .feedback {
+    margin-top: 10px; font-size: 0.9em; font-weight: 600;
+    padding: 8px 12px; border-radius: 6px;
+  }
+  .feedback.ok { background: #d5f5e3; color: #1e8449; }
+  .feedback.no { background: #fadbd8; color: #922b21; }
+
+  .btn-row {
+    display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap;
+  }
+  button {
+    font-family: inherit; font-size: 1em;
+    padding: 12px 28px; border-radius: 8px;
+    border: none; cursor: pointer; font-weight: 600;
+    transition: 0.2s;
+  }
+  .btn-reset { background: #ecf0f1; color: #2c3e50; }
+  .btn-reset:hover { background: #d5dbdb; }
+
+  .result-summary {
+    margin-top: 20px; padding: 18px 22px;
+    border-radius: 10px; display: none;
+    font-size: 1em;
+  }
+  .result-summary.show { display: block; }
+  .result-summary.good { background: #eafaf1; border: 2px solid #27ae60; }
+  .result-summary.bad { background: #fdedec; border: 2px solid #c0392b; }
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>🧩 Тренажёр: Темы 1–2</h1>
+  <p>Кодирование потребительских товаров. Кодирование товаров в ТН ВЭД</p>
+</header>
+
+<div class="main">
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  <div class="stats">
+    <span>Отвечено: <b id="answered">0</b> / 50</span>
+    <span>Правильно: <b id="correct">0</b></span>
+    <span>Ошибок: <b id="wrong">0</b></span>
+  </div>
+
+  <div id="questionsContainer"></div>
+
+  <div class="btn-row">
+    <button class="btn-reset" onclick="resetAll()">🔄 Начать заново</button>
+  </div>
+
+  <div class="result-summary" id="resultSummary"></div>
+</div>
+</div>
+
+<script>
+// ========== БАЗА ВОПРОСОВ (50) ==========
+const QUESTIONS = [
+  // --- ТЕМА 1: КОДИРОВАНИЕ ПОТРЕБИТЕЛЬСКИХ ТОВАРОВ (25 вопросов) ---
+  {
+    q: "Какой стандарт штрихкодирования был первым в мире?",
+    opts: ["UPC", "EAN-13", "Code 39", "GS1 DataBar", "QR Code"],
+    correct: 0
+  },
+  {
+    q: "В каком году был впервые просканирован товар с штрихкодом UPC в магазине?",
+    opts: ["1967", "1974", "1983", "1990", "2000"],
+    correct: 1
+  },
+  {
+    q: "Какой код используется в международной практике для маркировки потребительских товаров в розничной торговле?",
+    opts: ["EAN-13", "ISBN", "ITF-14", "Code 128", "PDF417"],
+    correct: 0
+  },
+  {
+    q: "Что означает аббревиатура GS1?",
+    opts: ["Global System 1", "Global Standards One", "General Supply 1", "Global Scan 1", "General Standard One"],
+    correct: 1
+  },
+  {
+    q: "Какой код содержит 13 цифр и используется для маркировки товаров в розничной торговле?",
+    opts: ["EAN-8", "EAN-13", "UPC-A", "Code 128", "ITF-14"],
+    correct: 1
+  },
+  {
+    q: "Какое преимущество даёт двумерный код по сравнению с линейным?",
+    opts: ["Он дешевле", "Он содержит больше данных", "Он не требует сканера", "Он не нуждается в печати", "Он работает без интернета"],
+    correct: 1
+  },
+  {
+    q: "Какой стандарт описывает синтаксис URI для двумерных кодов, позволяющий связать товар с цифровым паспортом?",
+    opts: ["GS1 Digital Link", "GS1 XML", "GS1 EPCIS", "GS1 DataMatrix", "GS1 QR"],
+    correct: 0
+  },
+  {
+    q: "Что такое Sunrise 2027?",
+    opts: ["Название нового стандарта штрихкодирования", "Глобальная цель по переходу розницы на 2D-коды к 2027 году", "Программа GS1 по обучению", "Конференция по цифровизации", "Новый тип QR-кода"],
+    correct: 1
+  },
+  {
+    q: "Какой тип кода может содержать GS1 Digital Link URI?",
+    opts: ["Только линейный штрихкод", "QR Code и Data Matrix", "Только Code 128", "Только PDF417", "Только EAN-13"],
+    correct: 1
+  },
+  {
+    q: "Что такое GTIN?",
+    opts: ["Глобальный номер товарной позиции", "Глобальный идентификационный номер торговой единицы", "Глобальный номер транспортной упаковки", "Глобальный номер локации", "Глобальный номер партии"],
+    correct: 1
+  },
+  {
+    q: "Какой идентификатор в системе GS1 используется для обозначения местоположения?",
+    opts: ["GTIN", "GLN", "SSCC", "GRAI", "GIAI"],
+    correct: 1
+  },
+  {
+    q: "Что такое SSCC?",
+    opts: ["Серийный код транспортной упаковки", "Стандартный код потребительской единицы", "Глобальный номер локации", "Код партии", "Код даты"],
+    correct: 0
+  },
+  {
+    q: "Какой из перечисленных кодов является двумерным?",
+    opts: ["EAN-13", "Code 39", "Data Matrix", "UPC-A", "ITF-14"],
+    correct: 2
+  },
+  {
+    q: "Что позволяет сделать GS1 Digital Link при сканировании кода потребителем?",
+    opts: ["Позвонить в магазин", "Перейти на веб-страницу с информацией о товаре", "Оплатить покупку", "Получить скидку", "Заказать доставку"],
+    correct: 1
+  },
+  {
+    q: "Какой орган разрабатывает стандарты GS1?",
+    opts: ["ISO", "GS1", "IEEE", "W3C", "IETF"],
+    correct: 1
+  },
+  {
+    q: "Что такое электронный паспорт изделия (ЭПИ)?",
+    opts: ["Бумажный документ", "Цифровая запись о товаре, доступная по коду", "Наклейка на товаре", "Сертификат качества", "Инструкция по эксплуатации"],
+    correct: 1
+  },
+  {
+    q: "Какое из перечисленного не является функцией электронного паспорта изделия?",
+    opts: ["Прослеживаемость происхождения", "Информация о составе", "Инструкция по утилизации", "Реклама других товаров", "Данные о производителе"],
+    correct: 3
+  },
+  {
+    q: "Что такое ГИСП?",
+    opts: ["Государственная информационная система промышленности", "Глобальная система идентификации продукции", "Государственный институт стандартизации", "Глобальная информационная система поставок", "Государственная инспекция по сертификации"],
+    correct: 0
+  },
+  {
+    q: "Какой документ регламентирует формирование цифровых паспортов промышленной продукции в РФ?",
+    opts: ["Постановление Правительства РФ № 896", "ФЗ № 44", "ФЗ № 223", "Приказ Минпромторга № 100", "Указ Президента № 250"],
+    correct: 0
+  },
+  {
+    q: "В какой системе размещаются цифровые паспорта промышленной продукции?",
+    opts: ["ЕГАИС", "ГИСП", "Честный ЗНАК", "ЕСИА", "СМЭВ"],
+    correct: 1
+  },
+  {
+    q: "Что такое DPP в контексте GS1?",
+    opts: ["Digital Product Passport", "Data Processing Protocol", "Digital Printing Platform", "Dynamic Product Page", "Direct Product Pricing"],
+    correct: 0
+  },
+  {
+    q: "Какой стандарт GS1 позволяет обмениваться данными о событиях в цепочке поставок?",
+    opts: ["EPCIS", "GS1 XML", "GS1 Digital Link", "GS1 DataMatrix", "GS1 QR"],
+    correct: 0
+  },
+  {
+    q: "Что означает аббревиатура RFID?",
+    opts: ["Radio Frequency Identification", "Rapid Frequency Identification", "Remote Frequency Identification", "Radio Frequency Interface Device", "Rapid File Identification"],
+    correct: 0
+  },
+  {
+    q: "Какая технология позволяет автоматически идентифицировать объекты с помощью радиоволн?",
+    opts: ["Штрихкодирование", "RFID", "OCR", "Магнитная полоса", "Биометрия"],
+    correct: 1
+  },
+  {
+    q: "Какое из перечисленного является примером 2D-кода?",
+    opts: ["EAN-13", "UPC-A", "QR Code", "Code 39", "ITF-14"],
+    correct: 2
+  },
+
+  // --- ТЕМА 2: КОДИРОВАНИЕ ТОВАРОВ В ТН ВЭД (25 вопросов) ---
+  {
+    q: "Что такое ТН ВЭД?",
+    opts: ["Товарная номенклатура внешнеэкономической деятельности", "Технологическая номенклатура внешней диагностики", "Таможенная номенклатура внешних данных", "Торговая номенклатура внешней деятельности", "Техническая номенклатура внешних документов"],
+    correct: 0
+  },
+  {
+    q: "На какой международной основе построена ТН ВЭД ЕАЭС?",
+    opts: ["На Гармонизированной системе описания и кодирования товаров (ГС)", "На системе ISO 9001", "На стандартах GS1", "На классификаторе ОКПД2", "На МСФО"],
+    correct: 0
+  },
+  {
+    q: "Сколько знаков содержит полный код ТН ВЭД ЕАЭС?",
+    opts: ["6", "8", "10", "12", "14"],
+    correct: 2
+  },
+  {
+    q: "Что обозначают первые две цифры кода ТН ВЭД?",
+    opts: ["Товарную позицию", "Группу", "Субпозицию", "Подсубпозицию", "Раздел"],
+    correct: 1
+  },
+  {
+    q: "Сколько разделов в ТН ВЭД ЕАЭС?",
+    opts: ["15", "21", "25", "30", "99"],
+    correct: 1
+  },
+  {
+    q: "Сколько групп в ТН ВЭД ЕАЭС?",
+    opts: ["77", "97", "99", "100", "120"],
+    correct: 2
+  },
+  {
+    q: "Какие группы ТН ВЭД зарезервированы на будущее?",
+    opts: ["1, 2, 3", "77, 98, 99", "50, 51, 52", "90, 91, 92", "10, 20, 30"],
+    correct: 1
+  },
+  {
+    q: "Что такое ОПИ?",
+    opts: ["Основные правила интерпретации", "Общие принципы идентификации", "Основные принципы измерения", "Общие правила импорта", "Операционные процедуры импорта"],
+    correct: 0
+  },
+  {
+    q: "Сколько основных правил интерпретации (ОПИ) существует?",
+    opts: ["4", "5", "6", "7", "8"],
+    correct: 2
+  },
+  {
+    q: "Какое ОПИ применяется первым при классификации товара?",
+    opts: ["ОПИ 1", "ОПИ 2", "ОПИ 3", "ОПИ 4", "ОПИ 5"],
+    correct: 0
+  },
+  {
+    q: "Что гласит ОПИ 1?",
+    opts: ["Классификация по тексту товарных позиций и примечаний", "Классификация по материалу", "Классификация по функции", "Классификация по стоимости", "Классификация по стране происхождения"],
+    correct: 0
+  },
+  {
+    q: "Когда применяется ОПИ 2(а)?",
+    opts: ["Когда товар некомплектный или разобранный", "Когда товар состоит из смеси материалов", "Когда есть конкуренция товарных позиций", "Когда товар уникален", "Когда есть упаковка"],
+    correct: 0
+  },
+  {
+    q: "Что регулирует ОПИ 2(б)?",
+    opts: ["Смеси и соединения материалов", "Некомплект", "Разборку", "Упаковку", "Конкуренцию позиций"],
+    correct: 0
+  },
+  {
+    q: "Какое ОПИ применяется при конкуренции товарных позиций?",
+    opts: ["ОПИ 1", "ОПИ 2", "ОПИ 3", "ОПИ 4", "ОПИ 5"],
+    correct: 2
+  },
+  {
+    q: "Что означает ОПИ 3(а)?",
+    opts: ["Наиболее конкретное описание", "Основное свойство", "Последняя позиция", "Первая позиция", "Наиболее сходный товар"],
+    correct: 0
+  },
+  {
+    q: "Что означает ОПИ 3(б)?",
+    opts: ["Компонент, определяющий основное свойство", "Наиболее конкретное описание", "Последняя позиция", "Первая позиция", "Упаковка"],
+    correct: 0
+  },
+  {
+    q: "Что означает ОПИ 3(в)?",
+    opts: ["Последняя позиция в порядке возрастания кодов", "Наиболее конкретное описание", "Основное свойство", "Наиболее сходный товар", "Упаковка"],
+    correct: 0
+  },
+  {
+    q: "Когда применяется ОПИ 4?",
+    opts: ["Когда товар уникален и не имеет позиции", "Когда товар разобран", "Когда есть смесь материалов", "Когда есть конкуренция позиций", "Когда есть упаковка"],
+    correct: 0
+  },
+  {
+    q: "Что регулирует ОПИ 5?",
+    opts: ["Упаковку", "Некомплект", "Смеси", "Конкуренцию", "Уникальность"],
+    correct: 0
+  },
+  {
+    q: "Какое ОПИ применяется для определения субпозиции?",
+    opts: ["ОПИ 1", "ОПИ 3", "ОПИ 5", "ОПИ 6", "ОПИ 4"],
+    correct: 3
+  },
+  {
+    q: "Что такое цифровой паспорт промышленной продукции?",
+    opts: ["Совокупность идентификационных параметров продукции", "Бумажный сертификат", "Наклейка на товаре", "Штрихкод", "Инструкция"],
+    correct: 0
+  },
+  {
+    q: "В какой системе размещается цифровой паспорт промышленной продукции?",
+    opts: ["ГИСП", "ЕГАИС", "Честный ЗНАК", "ЕСИА", "ФНС"],
+    correct: 0
+  },
+  {
+    q: "Какое постановление регулирует формирование цифровых паспортов промышленной продукции?",
+    opts: ["Постановление Правительства РФ № 896", "ФЗ № 44", "ФЗ № 223", "Приказ Минпромторга № 100", "Указ Президента № 250"],
+    correct: 0
+  },
+  {
+    q: "Что такое ГИСП?",
+    opts: ["Государственная информационная система промышленности", "Глобальная система идентификации", "Государственный институт стандартизации", "Глобальная информационная система поставок", "Государственная инспекция"],
+    correct: 0
+  },
+  {
+    q: "Что позволяет обеспечить интеграция кодов ТН ВЭД с электронными паспортами в ГИСП?",
+    opts: ["Сквозную прослеживаемость промышленных товаров", "Ускорение доставки", "Снижение налогов", "Упрощение импорта", "Автоматизацию бухгалтерии"],
+    correct: 0
+  }
+];
+
+// ========== ЛОГИКА ТРЕНАЖЁРА ==========
+let answered = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let locked = false;
+
+function renderQuestions() {
+  const container = document.getElementById('questionsContainer');
+  container.innerHTML = '';
+  QUESTIONS.forEach((q, i) => {
+    const card = document.createElement('div');
+    card.className = 'question-card';
+    card.id = 'q-' + i;
+    card.innerHTML = `
+      <span class="q-num">Вопрос ${i + 1}</span>
+      <div class="q-text">${q.q}</div>
+      <div class="options" id="opts-${i}">
+        ${q.opts.map((opt, j) => `
+          <label class="option" id="opt-${i}-${j}">
+            <input type="radio" name="q${i}" value="${j}" onchange="checkAnswer(${i}, ${j})">
+            <span>${opt}</span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="feedback" id="fb-${i}" style="display:none;"></div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function checkAnswer(qIndex, selected) {
+  if (locked) return;
+  const q = QUESTIONS[qIndex];
+  const card = document.getElementById('q-' + qIndex);
+  const feedback = document.getElementById('fb-' + qIndex);
+
+  // Блокируем все опции этого вопроса
+  const options = document.querySelectorAll(`#opts-${qIndex} .option`);
+  options.forEach(opt => opt.classList.add('disabled'));
+
+  // Подсвечиваем правильный ответ
+  const correctOpt = document.getElementById(`opt-${qIndex}-${q.correct}`);
+  correctOpt.classList.add('correct-answer');
+
+  if (selected === q.correct) {
+    card.classList.add('correct');
+    feedback.className = 'feedback ok';
+    feedback.textContent = '✅ Правильно!';
+    correctCount++;
+  } else {
+    card.classList.add('wrong');
+    const wrongOpt = document.getElementById(`opt-${qIndex}-${selected}`);
+    wrongOpt.classList.add('wrong-answer');
+    feedback.className = 'feedback no';
+    feedback.textContent = '❌ Неправильно. Правильный ответ выделен зелёным.';
+    wrongCount++;
+  }
+  feedback.style.display = 'block';
+
+  answered++;
+  updateStats();
+
+  // Если все вопросы отвечены — показываем итог
+  if (answered === QUESTIONS.length) {
+    showSummary();
+  }
+}
+
+function updateStats() {
+  document.getElementById('answered').textContent = answered;
+  document.getElementById('correct').textContent = correctCount;
+  document.getElementById('wrong').textContent = wrongCount;
+  const percent = (answered / QUESTIONS.length) * 100;
+  document.getElementById('progress').style.width = percent + '%';
+}
+
+function showSummary() {
+  const summary = document.getElementById('resultSummary');
+  const percent = Math.round((correctCount / QUESTIONS.length) * 100);
+  summary.classList.add('show');
+  if (percent >= 80) {
+    summary.className = 'result-summary show good';
+    summary.innerHTML = `<h3>🎉 Отличный результат!</h3><p>Вы ответили правильно на <b>${correctCount}</b> из <b>${QUESTIONS.length}</b> вопросов (<b>${percent}%</b>).</p>`;
+  } else if (percent >= 50) {
+    summary.className = 'result-summary show good';
+    summary.innerHTML = `<h3>👍 Хороший результат</h3><p>Вы ответили правильно на <b>${correctCount}</b> из <b>${QUESTIONS.length}</b> вопросов (<b>${percent}%</b>). Стоит повторить отдельные темы.</p>`;
+  } else {
+    summary.className = 'result-summary show bad';
+    summary.innerHTML = `<h3>📚 Нужно повторить материал</h3><p>Вы ответили правильно на <b>${correctCount}</b> из <b>${QUESTIONS.length}</b> вопросов (<b>${percent}%</b>). Рекомендуется вернуться к лекциям.</p>`;
+  }
+}
+
+function resetAll() {
+  answered = 0;
+  correctCount = 0;
+  wrongCount = 0;
+  locked = false;
+  document.getElementById('resultSummary').classList.remove('show');
+  document.getElementById('resultSummary').className = 'result-summary';
+  renderQuestions();
+  updateStats();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Инициализация
+renderQuestions();
+updateStats();
+</script>
+</body>
+</html>
